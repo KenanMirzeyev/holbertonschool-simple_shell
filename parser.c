@@ -1,74 +1,70 @@
 #include "shell.h"
 
 /**
- * split_line - Tokenizes a string into an array of arguments
- * @line: The input line
- * @argc: Pointer to store the argument count
+ * allocate_tokens - Allocate memory for an array of strings (tokens)
+ * @bufsize: initial buffer size
  *
- * Return: Array of argument strings, NULL if none
+ * Return: pointer to allocated array of strings
  */
-char **split_line(char *line, size_t *argc)
+static char **allocate_tokens(size_t bufsize)
 {
-	char *copy, *tok;
-	char **argv = NULL;
-	size_t cap = 0, count = 0;
+	char **tokens = malloc(bufsize * sizeof(char *));
 
-	if (!line || !*line)
-		return (NULL);
-
-	for (copy = line; *copy; copy++)
-		if (*copy != ' ' && *copy != '\t')
-			break;
-	if (!*copy)
-		return (NULL);
-
-	copy = strdup(line);
-	if (!copy)
-		return (NULL);
-
-	tok = strtok(copy, " \t");
-	while (tok)
+	if (!tokens)
 	{
-		if (count + 2 > cap)
-		{
-			size_t ncap = cap ? cap * 2 : 8;
-			char **nargv = realloc(argv, ncap * sizeof(*nargv));
-			if (!nargv)
-			{
-				free(argv);
-				free(copy);
-				return (NULL);
-			}
-			argv = nargv;
-			cap = ncap;
-		}
-		argv[count++] = strdup(tok);
-		tok = strtok(NULL, " \t");
+		perror("malloc");
+		exit(EXIT_FAILURE);
 	}
-	free(copy);
-	if (!count)
-	{
-		free(argv);
-		return (NULL);
-	}
-	argv[count] = NULL;
-	if (argc)
-		*argc = count;
-	return (argv);
+	return (tokens);
 }
 
 /**
- * free_tokens - Frees an array of token strings
- * @argv: The array of strings
+ * resize_tokens - Resize token array when more space is needed
+ * @tokens: current array of tokens
+ * @bufsize: pointer to current buffer size (will be updated)
+ *
+ * Return: pointer to resized array of tokens
  */
-void free_tokens(char **argv)
+static char **resize_tokens(char **tokens, size_t *bufsize)
 {
-	size_t i;
+	*bufsize += 64;
+	tokens = realloc(tokens, (*bufsize) * sizeof(char *));
+	if (!tokens)
+	{
+		perror("realloc");
+		exit(EXIT_FAILURE);
+	}
+	return (tokens);
+}
 
-	if (!argv)
-		return;
-	for (i = 0; argv[i]; i++)
-		free(argv[i]);
-	free(argv);
+/**
+ * split_line - Split a line into an array of tokens (words)
+ * @line: input string to split
+ * @ac: pointer to number of tokens parsed
+ *
+ * Return: array of tokens (NULL-terminated)
+ */
+char **split_line(char *line, size_t *ac)
+{
+	size_t bufsize = 64, i = 0;
+	char **tokens = allocate_tokens(bufsize);
+	char *token;
+
+	/* Get first token */
+	token = strtok(line, " \t\r\n");
+
+	while (token)
+	{
+		tokens[i++] = strdup(token);
+
+		if (i >= bufsize)
+			tokens = resize_tokens(tokens, &bufsize);
+
+		token = strtok(NULL, " \t\r\n");
+	}
+
+	tokens[i] = NULL;
+	*ac = i;
+	return (tokens);
 }
 
