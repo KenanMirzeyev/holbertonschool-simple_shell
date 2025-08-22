@@ -49,6 +49,9 @@ int main(void)
 		}
 		argv_child[argc] = NULL;
 
+		if (argc == 0)
+			continue;
+
 		pid = fork();
 		if (pid == -1)
 		{
