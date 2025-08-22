@@ -7,117 +7,80 @@
 
 #define BUFFER_SIZE 1024
 
-/* Check if input is from a terminal */
 int is_interactive(void)
 {
 	return isatty(STDIN_FILENO);
 }
 
-/* Tokenize input line */
 char **tokenize(char *line)
 {
 	int bufsize = 64;
-	int position = 0;
-	char **tokens;
+	int pos = 0;
+	char **tokens = malloc(bufsize * sizeof(char *));
 	char *token;
 
-	tokens = malloc(bufsize * sizeof(char *));
 	if (!tokens)
 	{
 		fprintf(stderr, "allocation error\n");
-		exit(EXIT_FAILURE);
+		exit(1);
 	}
 
 	token = strtok(line, " \t\r\n");
 	while (token != NULL)
 	{
-		tokens[position] = token;
-		position++;
+		tokens[pos++] = token;
 
-		if (position >= bufsize)
+		if (pos >= bufsize)
 		{
 			bufsize += 64;
 			tokens = realloc(tokens, bufsize * sizeof(char *));
 			if (!tokens)
 			{
 				fprintf(stderr, "allocation error\n");
-				exit(EXIT_FAILURE);
+				exit(1);
 			}
 		}
 
 		token = strtok(NULL, " \t\r\n");
 	}
-	tokens[position] = NULL;
+	tokens[pos] = NULL;
 	return tokens;
 }
 
-/* Find command in PATH */
-char *find_command(char *command)
+char *find_command(char *cmd)
 {
-	char *path_env;
-	char *path;
-	char *full_path;
-	char *dir;
-	size_t len;
+	char *paths[] = {"/bin/", "/usr/bin/", NULL};
+	char fullpath[BUFFER_SIZE];
+	int i = 0;
 
-	path_env = getenv("PATH");
-	if (!path_env)
-		return NULL;
-
-	path = strdup(path_env);
-	if (!path)
-		return NULL;
-
-	dir = strtok(path, ":");
-	while (dir)
+	if (strchr(cmd, '/'))
 	{
-		len = strlen(dir) + strlen(command) + 2;
-		full_path = malloc(len);
-		if (!full_path)
-		{
-			free(path);
+		if (access(cmd, X_OK) == 0)
+			return strdup(cmd);
+		else
 			return NULL;
-		}
-		snprintf(full_path, len, "%s/%s", dir, command);
-		if (access(full_path, X_OK) == 0)
-		{
-			free(path);
-			return full_path;
-		}
-		free(full_path);
-		dir = strtok(NULL, ":");
 	}
-	free(path);
+
+	while (paths[i])
+	{
+		snprintf(fullpath, BUFFER_SIZE, "%s%s", paths[i], cmd);
+		if (access(fullpath, X_OK) == 0)
+			return strdup(fullpath);
+		i++;
+	}
 	return NULL;
 }
 
-/* Execute command */
 void execute(char **args)
 {
 	pid_t pid;
 	int status;
-	char *cmd_path;
+	char *cmd_path = find_command(args[0]);
 
-	if (args[0] == NULL)
+	if (!cmd_path)
+	{
+		fprintf(stderr, "%s: not found\n", args[0]);
 		return;
-
-	if (strchr(args[0], '/'))
-	{
-		if (access(args[0], X_OK) != 0)
-		{
-			fprintf(stderr, "%s: command not found\n", args[0]);
-			return;
-		}
-		cmd_path = strdup(args[0]);
-	}
-	else
-	{
-		cmd_path = find_command(args[0]);
-		if (!cmd_path)
-		{
-			fprintf(stderr, "%s: not found\n", args[0]);
-			return;
-		}
 	}
 
 	pid = fork();
@@ -125,16 +88,12 @@ void execute(char **args)
 	{
 		execve(cmd_path, args, NULL);
 		fprintf(stderr, "%s: execution failed\n", args[0]);
-		exit(EXIT_FAILURE);
+		exit(1);
 	}
 	else if (pid < 0)
-	{
 		perror("fork");
-	}
 	else
-	{
 		waitpid(pid, &status, 0);
-	}
 
 	free(cmd_path);
 }
@@ -156,18 +115,10 @@ int main(void)
 
 		read = getline(&line, &len, stdin);
 		if (read == -1)
-		{
-			if (feof(stdin))
-			{
-				if (is_interactive())
-					printf("\n");
-				break;
-			}
-			continue;
-		}
+			break;
 
 		args = tokenize(line);
-		if (args[0] == NULL)
+		if (!args[0])
 		{
 			free(args);
 			continue;
