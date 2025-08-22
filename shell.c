@@ -1,114 +1,98 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h>
 #include <string.h>
+#include <unistd.h>
 #include <sys/wait.h>
 
-extern char **environ;
+#define BUFFER_SIZE 1024
 
-char *find_command(char *cmd)
+/* Function to split a line into tokens */
+char **tokenize(char *line)
 {
-	char *path, *dir, *full_path;
-	char *path_copy;
-	int len;
+	char **tokens;
+	char *token;
+	int bufsize = 64, i = 0;
 
-	if (strchr(cmd, '/'))
+	tokens = malloc(bufsize * sizeof(char *));
+	if (!tokens)
 	{
-		if (access(cmd, X_OK) == 0)
-			return strdup(cmd);
-		return NULL;
+		perror("malloc");
+		exit(EXIT_FAILURE);
 	}
 
-	path = getenv("PATH");
-	if (!path)
-		return NULL;
-
-	path_copy = strdup(path);
-	dir = strtok(path_copy, ":");
-	while (dir)
+	token = strtok(line, " \t\r\n");
+	while (token != NULL)
 	{
-		len = strlen(dir) + strlen(cmd) + 2;
-		full_path = malloc(len);
-		snprintf(full_path, len, "%s/%s", dir, cmd);
-		if (access(full_path, X_OK) == 0)
-		{
-			free(path_copy);
-			return full_path;
-		}
-		free(full_path);
-		dir = strtok(NULL, ":");
+		tokens[i] = token;
+		i++;
+		token = strtok(NULL, " \t\r\n");
 	}
-	free(path_copy);
-	return NULL;
+
+	tokens[i] = NULL;
+	return tokens;
+}
+
+/* Execute command */
+void execute(char **args)
+{
+	pid_t pid;
+	int status;
+
+	if (args[0] == NULL)
+		return;
+
+	pid = fork();
+	if (pid == 0) /* Child process */
+	{
+		execvp(args[0], args);
+		fprintf(stderr, "%s: command not found\n", args[0]);
+		exit(EXIT_FAILURE);
+	}
+	else if (pid < 0)
+	{
+		perror("fork");
+	}
+	else /* Parent process */
+	{
+		waitpid(pid, &status, 0);
+	}
 }
 
 int main(void)
 {
 	char *line = NULL;
-	size_t n = 0;
+	size_t len = 0;
+	char **args;
 	ssize_t read;
-	char *argv_child[100];
-	char *token;
-	char *cmd_path;
-	pid_t pid;
-	int status;
-	int i;
 
 	while (1)
 	{
-		printf(":) ");
-		fflush(stdout);
-		read = getline(&line, &n, stdin);
+		printf("#cisfun$ ");
+		read = getline(&line, &len, stdin);
 		if (read == -1)
 		{
-			putchar('\n');
+			if (feof(stdin))
+				break;
+			continue;
+		}
+
+		args = tokenize(line);
+		if (args[0] == NULL)
+		{
+			free(args);
+			continue;
+		}
+
+		if (strcmp(args[0], "exit") == 0)
+		{
+			free(args);
 			break;
 		}
 
-		if (line[read - 1] == '\n')
-			line[read - 1] = '\0';
-
-		i = 0;
-		token = strtok(line, " \t");
-		while (token && i < 99)
-		{
-			argv_child[i] = token;
-			i++;
-			token = strtok(NULL, " \t");
-		}
-		argv_child[i] = NULL;
-		if (i == 0)
-			continue;
-
-		if (strcmp(argv_child[0], "exit") == 0)
-			break;
-
-		cmd_path = find_command(argv_child[0]);
-		if (!cmd_path)
-		{
-			fprintf(stderr, "./hsh: 1: %s: not found\n", argv_child[0]);
-			continue;
-		}
-
-		pid = fork();
-		if (pid == -1)
-		{
-			perror("fork");
-			free(cmd_path);
-			continue;
-		}
-		else if (pid == 0)
-		{
-			execve(cmd_path, argv_child, environ);
-			perror(cmd_path);
-			_exit(127);
-		}
-		else
-		{
-			waitpid(pid, &status, 0);
-			free(cmd_path);
-		}
+		execute(args);
+		free(args);
 	}
+
 	free(line);
 	return 0;
 }
