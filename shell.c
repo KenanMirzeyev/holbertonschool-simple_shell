@@ -7,6 +7,22 @@
 
 extern char **environ;
 
+char *get_path_from_env(void)
+{
+	int i;
+	char *val;
+
+	for (i = 0; environ[i]; i++)
+	{
+		if (strncmp(environ[i], "PATH=", 5) == 0)
+		{
+			val = environ[i] + 5;
+			return val;
+		}
+	}
+	return NULL;
+}
+
 char *find_command(char *cmd)
 {
 	char *path_env, *path_copy, *dir, *full_path;
@@ -19,7 +35,7 @@ char *find_command(char *cmd)
 		return NULL;
 	}
 
-	path_env = getenv("PATH");
+	path_env = get_path_from_env();
 	if (!path_env)
 		return NULL;
 
