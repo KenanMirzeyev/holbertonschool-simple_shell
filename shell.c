@@ -7,7 +7,13 @@
 
 #define BUFFER_SIZE 1024
 
-/* Function to split line into tokens (arguments) */
+/* Check if input is from a terminal */
+int is_interactive(void)
+{
+	return isatty(STDIN_FILENO);
+}
+
+/* Tokenize input line */
 char **tokenize(char *line)
 {
 	int bufsize = 64;
@@ -45,7 +51,7 @@ char **tokenize(char *line)
 	return tokens;
 }
 
-/* Function to search command in PATH */
+/* Find command in PATH */
 char *find_command(char *command)
 {
 	char *path_env;
@@ -142,15 +148,19 @@ int main(void)
 
 	while (1)
 	{
-		printf("#cisfun$ ");
-		fflush(stdout);
+		if (is_interactive())
+		{
+			printf("#cisfun$ ");
+			fflush(stdout);
+		}
 
 		read = getline(&line, &len, stdin);
 		if (read == -1)
 		{
 			if (feof(stdin))
 			{
-				printf("\n");
+				if (is_interactive())
+					printf("\n");
 				break;
 			}
 			continue;
