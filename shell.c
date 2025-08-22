@@ -1,16 +1,23 @@
-#include "shell.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <string.h>
+#include <sys/types.h>
+#include <sys/wait.h>
 
-int main(int argc, char **argv)
+extern char **environ;
+
+int main(void)
 {
-	const char *prompt = "#cisfun$ ";
 	char *line = NULL;
 	size_t cap = 0;
 	ssize_t nread;
-	char *cmd;
+	char *argv_child[100];
+	int argc;
 	pid_t pid;
 	int status;
-
-	(void)argc;
+	const char *prompt = "#cisfun$ ";
+	char *token;
 
 	while (1)
 	{
@@ -31,38 +38,36 @@ int main(int argc, char **argv)
 		if (line[0] == '\0')
 			continue;
 
-		cmd = strtok(line, " \t");
-		if (!cmd)
-			continue;
+		argc = 0;
+
+		token = strtok(line, " \t");
+
+		while (token != NULL && argc < 99)
+		{
+			argv_child[argc++] = token;
+			token = strtok(NULL, " \t");
+		}
+		argv_child[argc] = NULL;
 
 		pid = fork();
 		if (pid == -1)
 		{
-			perror(argv[0]);
+			perror("fork");
 			continue;
 		}
 		else if (pid == 0)
 		{
-			char *exec_argv[2];
-			exec_argv[0] = cmd;
-			exec_argv[1] = NULL;
-			execve(exec_argv[0], exec_argv, environ);
-			perror(argv[0]);
+			execve(argv_child[0], argv_child, environ);
+			perror(argv_child[0]);
 			_exit(127);
 		}
 		else
 		{
-			do {
-				if (waitpid(pid, &status, 0) == -1)
-				{
-					perror(argv[0]);
-					break;
-				}
-			} while (!WIFEXITED(status) && !WIFSIGNALED(status));
+			waitpid(pid, &status, 0);
 		}
 	}
 
 	free(line);
-	return 0;
+	return (0);
 }
 
