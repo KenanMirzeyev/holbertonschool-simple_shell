@@ -1,0 +1,52 @@
+.TH simple_shell 1 "August 2025" "Holberton School" "User Commands"
+.SH NAME
+simple_shell \- a simple UNIX command line interpreter
+.SH SYNOPSIS
+.B simple_shell
+.RI [ no\ arguments ]
+.SH DESCRIPTION
+The
+.B simple_shell
+program is a minimal implementation of a UNIX command line interpreter.
+
+It provides a prompt to the user, waits for input, executes the given command,
+and displays the prompt again after execution.
+
+Supported features:
+.IP \(bu 2
+Displays a prompt (#cisfun$ ) and waits for user input
+.IP \(bu 2
+Executes a command given as an absolute or relative path
+.IP \(bu 2
+Handles errors when the command cannot be executed
+.IP \(bu 2
+Handles the end-of-file (Ctrl+D) condition
+
+Limitations:
+.IP \(bu 2
+Does not handle command arguments
+.IP \(bu 2
+Does not use the PATH environment variable to search for executables
+.IP \(bu 2
+Does not support built-in commands
+.IP \(bu 2
+Does not support advanced features such as pipes, redirections, or special characters
+.SH USAGE
+Run the shell:
+
+.EX
+$ ./hsh
+#cisfun$ /bin/ls
+file1 file2 file3
+#cisfun$ /bin/pwd
+/home/user
+#cisfun$ ^D
+$
+.EE
+
+The shell will execute the command if found; otherwise, it will print an error message.
+.SH EXIT STATUS
+The shell returns the exit status of the last command executed.
+.SH AUTHORS
+Written by Kenan Mirzeyev.
+

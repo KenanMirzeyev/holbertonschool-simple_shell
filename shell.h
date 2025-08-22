@@ -10,6 +10,11 @@
 #include <string.h>
 #include <errno.h>
 
+int execute_command(char **av, char **envp);
+int process_line(char *line, char **envp, int *should_exit, int status);
+char *find_command(char *cmd, char **envp);
+int execute(char *cmdpath, char **av, char **envp);
+int _strlen(char *s);
 extern char **environ;
 char **split_line(char *line, size_t *argc);
 void free_tokens(char **argv);

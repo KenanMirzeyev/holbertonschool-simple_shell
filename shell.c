@@ -1,19 +1,16 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
-#include <sys/types.h>
-#include <sys/wait.h>
-
-extern char **environ;
+#include "shell.h"
 
 int main(int argc, char **argv)
 {
-	(void)argc;
 	const char *prompt = "#cisfun$ ";
 	char *line = NULL;
 	size_t cap = 0;
 	ssize_t nread;
+	char *cmd;
+	pid_t pid;
+	int status;
+
+	(void)argc;
 
 	while (1)
 	{
@@ -34,11 +31,11 @@ int main(int argc, char **argv)
 		if (line[0] == '\0')
 			continue;
 
-		char *cmd = strtok(line, " \t");
+		cmd = strtok(line, " \t");
 		if (!cmd)
 			continue;
 
-		pid_t pid = fork();
+		pid = fork();
 		if (pid == -1)
 		{
 			perror(argv[0]);
@@ -55,7 +52,6 @@ int main(int argc, char **argv)
 		}
 		else
 		{
-			int status;
 			do {
 				if (waitpid(pid, &status, 0) == -1)
 				{
@@ -69,3 +65,4 @@ int main(int argc, char **argv)
 	free(line);
 	return 0;
 }
+
